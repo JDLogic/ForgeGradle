@@ -52,6 +52,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -105,11 +106,6 @@ public class Utils {
     public static final String INSTALLERTOOLS = "net.minecraftforge:installertools:1.1.10:fatjar";
     public static final long ZIPTIME = 628041600000L;
     public static final TimeZone GMT = TimeZone.getTimeZone("GMT");
-    public static final String OFFICIAL_MAPPING_USAGE =
-            "These mapping files are licensed as All Rights Reserved with permission to use the contents for INTERNAL, "
-          + "REFERENCE purposes. Please avoid publishing any source code referencing these mappings. A full copy of "
-          + "the license can be found at the top of the mapping file itself and in the 19w36a snapshot article at: "
-          + "https://www.minecraft.net/en-us/article/minecraft-snapshot-19w36a.";
 
     public static void extractFile(ZipFile zip, String name, File output) throws IOException {
         extractFile(zip, zip.getEntry(name), output);
@@ -644,5 +640,35 @@ public class Utils {
             default:
                 return new File(System.getProperty("user.home") + "/.minecraft");
         }
+    }
+
+    /**
+     * This method requires the project have {@link MinecraftRepo} attached as it provides the official mapping files
+     */
+    public static String getOfficialMappingLicense(Project project, String version) {
+        StringBuilder sb = new StringBuilder();
+        String mcpversion = version;
+        int idx = version.lastIndexOf('-');
+        if (idx != -1 && version.substring(idx + 1).matches("\\d{8}\\.\\d{6}")) { //Timestamp, so lets assume that's the MCP part.
+            mcpversion = version.substring(0, idx);
+        }
+        File client = MavenArtifactDownloader.generate(project, "net.minecraft:client:" + mcpversion + ":mappings@txt", true);
+        try (BufferedReader br = new BufferedReader(new FileReader(client))) {
+            String line;
+            while ((line = br.readLine()) != null && line.trim().startsWith("#")) {
+                sb.append(line.substring(1).trim()).append(' ');
+            }
+        }
+        catch (IOException e) {
+            // Make sure the SB it empty so that the error message below will trigger
+            sb = new StringBuilder();
+        }
+
+        String ret = sb.toString().trim();
+        if (ret.isEmpty()) {
+            ret = "Failed to read license from file. Please look up the license to know how using these mappings may affect you project.";
+        }
+
+        return ret;
     }
 }

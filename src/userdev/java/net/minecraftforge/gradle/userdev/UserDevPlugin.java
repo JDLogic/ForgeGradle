@@ -178,10 +178,6 @@ public class UserDevPlugin implements Plugin<Project> {
             String channel = project.hasProperty("UPDATE_MAPPINGS_CHANNEL") ? (String)project.property("UPDATE_MAPPINGS_CHANNEL") : "snapshot";
 
             logger.lifecycle("This process uses Srg2Source for java source file renaming. Please forward relevant bug reports to https://github.com/MinecraftForge/Srg2Source/issues.");
-            if ("official".equals(channel)) {
-                String warning = "WARNING: This project will be updated to use the official obfuscation mappings provided by Mojang. " + Utils.OFFICIAL_MAPPING_USAGE;
-                logger.warn(warning);
-            }
 
             JavaCompile javaCompile = (JavaCompile) project.getTasks().getByName("compileJava");
             JavaPluginConvention javaConv = (JavaPluginConvention) project.getConvention().getPlugins().get("java");
@@ -192,6 +188,15 @@ public class UserDevPlugin implements Plugin<Project> {
             TaskProvider<TaskApplyRangeMap> applyRangeConfig = project.getTasks().register("applyRangeMap", TaskApplyRangeMap.class);
             TaskProvider<TaskApplyMappings> toMCPNew = project.getTasks().register("srg2mcpNew", TaskApplyMappings.class);
             TaskProvider<TaskExtractExistingFiles> extractMappedNew = project.getTasks().register("extractMappedNew", TaskExtractExistingFiles.class);
+
+            dlMappingsNew.get().doLast(t -> {
+                if ("official".equals(channel)) {
+                    String warning = "WARNING: This project will be updated to use the official obfuscation mappings provided by Mojang. " +
+                                     "These mappings are held to the following license which is found at top of the mapping file : " +
+                                     Utils.getOfficialMappingLicense(project, version);
+                    logger.warn(warning);
+                }
+            });
 
             extractRangeConfig.configure(task -> {
                 task.addSources(srcDirs);
@@ -227,11 +232,6 @@ public class UserDevPlugin implements Plugin<Project> {
         }
 
         project.afterEvaluate(p -> {
-            if ("official".equals(extension.getMappingChannel())) {
-                String warning = "WARNING: This project is configured to use the official obfuscation mappings provided by Mojang. " + Utils.OFFICIAL_MAPPING_USAGE;
-                logger.warn(warning);
-            }
-
             MinecraftUserRepo mcrepo = null;
             DeobfuscatingRepo deobfrepo = null;
 
@@ -284,6 +284,13 @@ public class UserDevPlugin implements Plugin<Project> {
             if (mcrepo == null)
                 throw new IllegalStateException("Missing 'minecraft' dependency entry.");
             mcrepo.validate(minecraft, extension.getRuns().getAsMap(), extractNatives.get(), downloadAssets.get(), createSrgToMcp.get()); //This will set the MC_VERSION property.
+
+            if ("official".equals(extension.getMappingChannel())) {
+                String warning = "WARNING: This project is configured to use the official obfuscation mappings provided by Mojang. " +
+                                 "These mappings are held to the following license which found at top of the mapping file : " +
+                                 Utils.getOfficialMappingLicense(project, extension.getMappingVersion());
+                logger.warn(warning);
+            }
 
             String mcVer = (String) project.getExtensions().getExtraProperties().get("MC_VERSION");
             String mcpVer = (String) project.getExtensions().getExtraProperties().get("MCP_VERSION");
