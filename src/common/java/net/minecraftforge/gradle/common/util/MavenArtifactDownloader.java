@@ -183,6 +183,8 @@ public class MavenArtifactDownloader {
             //It also appears you can't do something like 1.5+ to NOT get 1.4/1.3. So.. mimic that.
             File meta = _downloadWithCache(project, maven, artifact.getGroup().replace('.', '/') + '/' + artifact.getName() + "/maven-metadata.xml", true, true);
             if (meta == null)
+                meta = _downloadWithCache(project, maven, artifact.getGroup().replace('.', '/') + '/' + artifact.getName() + "/maven-metadata-local.xml", true, false);
+            if (meta == null)
                 return null; //Don't error, other repos might have it.
             try {
                 Node xml = new XmlParser().parse(meta);
